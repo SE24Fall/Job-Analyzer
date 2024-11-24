@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resume Analysis</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  <style>
+    .container {
+      margin-top: 50px;
+    }
+
+    .analysis-result {
+      margin-top: 30px;
+    }
+
+    .analysis-result h3 {
+      margin-bottom: 20px;
+    }
+
+    .analysis-result ul {
+      list-style-type: disc;
+      padding-left: 20px;
+    }
+
+    .score {
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2 class="text-center">Resume Analysis</h2>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mt-4">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Display Analysis Results -->
+    {% if analysis %}
+    <div class="analysis-result">
+      <h3>Analysis Results:</h3>
+
+      <p><strong>Resume Score:</strong> <span class="score">{{ analysis.score }}</span>/100</p>
+
+      <h4>Identified Issues:</h4>
+      {% if analysis.issues %}
+      <ul>
+        {% for issue in analysis.issues %}
+          <li>{{ issue }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+        <p>No issues detected. Your resume looks great!</p>
+      {% endif %}
+
+      <h4>Recommendations:</h4>
+      {% if analysis.recommendations %}
+      <ul>
+        {% for rec in analysis.recommendations %}
+          <li>{{ rec }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+        <p>No recommendations at this time.</p>
+      {% endif %}
+
+      <h4>Resume File:</h4>
+      {% if resume_fileid and resume_filename %}
+        <a href="{{ url_for('downloadResume', fileid=resume_fileid) }}" class="btn btn-secondary" target="_blank">Download Resume</a>
+      {% else %}
+        <p>N/A</p>
+      {% endif %}
+
+      <div class="mt-4">
+        <a href="{{ url_for('user_profile') }}" class="btn btn-primary">Back to Profile</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- If no analysis yet -->
+    {% if not analysis %}
+    <div class="mt-4">
+      <p>Please upload your resume to perform analysis.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Bootstrap JS and dependencies (Optional for better UI/UX) -->
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+    integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+    crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+    integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa0jQ6n6hT0y3Dv3FfQ8an22K"
+    crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+    integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+    crossorigin="anonymous"></script>
+</body>
+
+</html>

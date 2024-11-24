@@ -7,6 +7,16 @@ from pandas import DataFrame  # noqa: E402
 import re  # noqa: E402
 import numpy as np  # noqa: E402
 
+import os
+from flask_pymongo import PyMongo
+from flask_mail import Mail, Message
+from pymongo import MongoClient
+import gridfs
+from pyresparser import ResumeParser
+from bson.objectid import ObjectId
+from werkzeug.utils import secure_filename
+import nltk
+
 """
 The module app holds the function related to flask app and database.
 """
@@ -42,6 +52,14 @@ Client connection
 '''
 db = mongodb_client.db
 
+UPLOAD_FOLDER= 'uploads/'
+
+# Ensure UPLOAD_FOLDER exists
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads/')
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def login_required(f):
     """
@@ -377,3 +395,123 @@ def read_from_db(request, db):
             job['bookmarked'] = '<a href="/bookmark?jobid=' + str(job['_id']) + '">📌</a>'
 
     return DataFrame(list(data))
+
+
+def perform_resume_analysis(parsed_data):
+    """
+    Analyzes the parsed resume data, assigns a score, and identifies issues.
+    Returns a dictionary with the analysis results.
+    """
+    score = 0
+    issues = []
+    recommendations = []
+
+    # Example Criteria
+    # 1. Presence of Contact Information
+    if parsed_data.get('email') and parsed_data.get('phone'):
+        score += 20
+    else:
+        issues.append("Missing contact information (email or phone).")
+        recommendations.append("Ensure your resume includes your email and phone number.")
+
+    # 2. Presence of Skills
+    if parsed_data.get('skills') and len(parsed_data['skills']) >= 5:
+        score += 20
+    else:
+        issues.append("Insufficient skills listed.")
+        recommendations.append("List at least 5 relevant skills related to your desired job.")
+
+    # 3. Education Details
+    if parsed_data.get('education') and len(parsed_data['education']) >= 1:
+        score += 20
+    else:
+        issues.append("Education details missing.")
+        recommendations.append("Include your educational background.")
+
+    # 4. Experience Details
+    if parsed_data.get('experience') and len(parsed_data['experience']) >= 1:
+        score += 20
+    else:
+        issues.append("Work experience missing.")
+        recommendations.append("Add your relevant work experience.")
+
+    # 5. Certifications (Optional)
+    if parsed_data.get('certifications') and len(parsed_data['certifications']) >= 1:
+        score += 10
+    else:
+        recommendations.append("Consider adding relevant certifications to strengthen your resume.")
+
+    # 6. Formatting and Length (Assumed based on parsing success)
+    # Additional checks can be implemented based on specific requirements.
+    # For simplicity, we'll assume formatting is adequate if parsing was successful.
+    score += 10  # Assuming formatting is good
+
+    # Ensure score does not exceed 100
+    score = min(score, 100)
+
+    analysis = {
+        'score': score,
+        'issues': issues,
+        'recommendations': recommendations
+    }
+
+    return analysis
+
+@app.route('/analyze_resume', methods=['GET'])
+@login_required
+def analyze_resume():
+    """
+    Route: '/analyze_resume'
+    Analyzes the user's uploaded resume and displays the score and issues.
+    """
+    user_id = ObjectId(session['user']['_id'])
+    user = db.users.find_one({'_id': user_id})
+
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for('user_profile'))
+
+    resume_fileid = user.get('resume_fileid')
+    resume_filename = user.get('resume_filename')
+
+    if not resume_fileid:
+        flash("No resume uploaded to analyze.", "warning")
+        return redirect(url_for('user_profile'))
+
+    try:
+        # Retrieve resume file from GridFS
+        resume_file = fs.get(ObjectId(resume_fileid))
+        resume_data = resume_file.read()
+
+        # Save the resume to a temporary file for parsing
+        temp_resume_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{secure_filename(resume_filename)}')
+        with open(temp_resume_path, 'wb') as temp_file:
+            temp_file.write(resume_data)
+
+        # Parse the resume
+        parsed_data = ResumeParser(temp_resume_path).get_extracted_data()
+
+        # Remove the temporary file
+        os.remove(temp_resume_path)
+
+        if not parsed_data:
+            flash("Failed to parse the resume.", "danger")
+            return redirect(url_for('user_profile'))
+
+        # Perform analysis (scoring and issue identification)
+        analysis_result = perform_resume_analysis(parsed_data)
+
+        # Render the analysis page with results
+        return render_template('resume_analysis.html',
+                               analysis=analysis_result,
+                               resume_fileid=resume_fileid,
+                               resume_filename=resume_filename)
+    except gridfs.errors.NoFile:
+        flash("Resume file not found.", "danger")
+        return redirect(url_for('user_profile'))
+    except LookupError:
+        flash("NLTK stopwords not found. Please run the setup to download necessary resources.", "danger")
+        return redirect(url_for('user_profile'))
+    except Exception as e:
+        flash(f"An error occurred during analysis: {str(e)}", "danger")
+        return redirect(url_for('user_profile'))
