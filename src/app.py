@@ -1,5 +1,10 @@
+from email.message import EmailMessage
 from functools import wraps
-from flask import Flask, render_template, request, session, redirect, url_for, flash  # noqa: E402
+from json import dumps
+import json
+import smtplib
+import ssl
+from flask import Flask, render_template, request, session, redirect, url_for, flash, jsonify  # noqa: E402
 from flask_pymongo import PyMongo  # noqa: E402
 
 from passlib.hash import pbkdf2_sha256
@@ -515,3 +520,43 @@ def analyze_resume():
     except Exception as e:
         flash(f"An error occurred during analysis: {str(e)}", "danger")
         return redirect(url_for('user_profile'))
+
+@app.route('/toggle-on', methods=['POST'])
+def toggle_on():
+    print("Toggle switch is now on!")
+    jobs_list = list(db.jobs.find())
+    if jobs_list is None:
+        print("No Jobs")
+
+    for job in jobs_list:
+        send_notification_email(job)
+        break
+    return jsonify({'message': 'Function executed successfully'}), 200
+
+def send_notification_email(jobs):
+
+    sender = 'burnoutapp123@gmail.com'
+    password = 'xszyjpklynmwqsgh'
+    receiver = "shubhamkulkarni2421@gmail.com"
+
+    subject = 'Job-Cruncher: New Job Notification'
+    body = f"New job available: {jobs['Job Title']}\nDescription: {jobs['Job function']}"
+
+    try:
+
+        em = EmailMessage()
+        em['From'] = sender
+        em['To'] = receiver
+        em['Subject'] = subject
+        em.set_content(body)
+
+        context = ssl.create_default_context()
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
+            smtp.login(sender, password)
+            smtp.sendmail(sender, receiver, em.as_string())
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        flash(
+            'Failed to send Two-Factor Authentication code. Please try again.',
+            'danger')
