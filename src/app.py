@@ -528,19 +528,35 @@ def toggle_on():
     if jobs_list is None:
         print("No Jobs")
 
-    for job in jobs_list:
-        send_notification_email(job)
-        break
+    send_notification_email(jobs_list)
+    # for job in jobs_list:
+    #     send_notification_email(job)
+    #     break
     return jsonify({'message': 'Function executed successfully'}), 200
 
-def send_notification_email(jobs):
+def send_notification_email(jobs_list):
 
     sender = 'burnoutapp123@gmail.com'
     password = 'xszyjpklynmwqsgh'
     receiver = "shubhamkulkarni2421@gmail.com"
 
     subject = 'Job-Cruncher: New Job Notification'
-    body = f"New job available: {jobs['Job Title']}\nDescription: {jobs['Job function']}"
+    body = "Job Listings:\n\n"
+
+    for jobs in jobs_list:
+        body += f"""
+    Job Title: {jobs['Job Title']}
+    Company: {jobs['Company Name']}
+    Location: {jobs['Location']}
+    Job Function: {jobs['Job function']}
+    Employment Type: {jobs['Employment type']}
+    Industries: {jobs['Industries']}
+    Date Posted: {jobs['Date Posted']}
+    Job Description: {jobs['Job Description'][:200]}...
+
+    """
+
+    body += "\nFor more details, please check the job postings on our platform."
 
     try:
 
