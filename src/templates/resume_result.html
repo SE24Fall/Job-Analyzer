@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center my-4">Analysis Results</h1>
+    <div class="card text-center my-5">
+        <div class="card-body">
+            <h2 class="card-title">Job Name: <strong>{{ job_name }}</strong></h2>
+            <h3 class="card-text text-success my-3">ATS Score: <strong>{{ ats_score }}</strong></h3>
+            <h3 class="card-text text-primary my-3">Matching Score: <strong>{{ matching_score }}</strong></h3>
+        </div>
+    </div>
+    <a href="{{ url_for('resume_analyzer.analyzer_page') }}" class="btn btn-secondary">Analyze Another Resume</a>
+</div>
+{% endblock %}

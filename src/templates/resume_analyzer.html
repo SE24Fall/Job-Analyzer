@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center my-4">Resume Analyzer</h1>
+    <form method="POST" action="{{ url_for('resume_analyzer.analyze_resume') }}" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="job_name" class="form-label">Job Name</label>
+            <input type="text" class="form-control" id="job_name" name="job_name" placeholder="Enter the job name" required>
+        </div>
+        <div class="mb-3">
+            <label for="job_description" class="form-label">Job Description</label>
+            <textarea class="form-control" id="job_description" name="job_description" rows="4"
+                      placeholder="Paste the job description here" required></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="resume" class="form-label">Upload Resume</label>
+            <input type="file" class="form-control" id="resume" name="resume" accept=".pdf,.docx" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Analyze</button>
+    </form>
+</div>
+{% endblock %}

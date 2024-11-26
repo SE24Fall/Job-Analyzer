@@ -1,12 +1,16 @@
+from email.message import EmailMessage
 from functools import wraps
-from flask import Flask, render_template, request, session, redirect, url_for, flash  # noqa: E402
+
+import smtplib
+import ssl
+from flask import Flask, render_template, request, session, redirect, url_for, flash, jsonify  # noqa: E402
 from flask_pymongo import PyMongo  # noqa: E402
 
 from passlib.hash import pbkdf2_sha256
 from pandas import DataFrame  # noqa: E402
 import re  # noqa: E402
 import numpy as np  # noqa: E402
-
+from src.resume_analyzer import resume_analyzer
 """
 The module app holds the function related to flask app and database.
 """
@@ -42,6 +46,7 @@ Client connection
 '''
 db = mongodb_client.db
 
+app.register_blueprint(resume_analyzer, url_prefix='/resume')
 
 def login_required(f):
     """
@@ -377,3 +382,60 @@ def read_from_db(request, db):
             job['bookmarked'] = '<a href="/bookmark?jobid=' + str(job['_id']) + '">📌</a>'
 
     return DataFrame(list(data))
+
+@app.route('/toggle-on', methods=['POST'])
+def toggle_on():
+    print("Toggle switch is now on!")
+    jobs_list = list(db.jobs.find())
+    if jobs_list is None:
+        print("No Jobs")
+
+    send_notification_email(jobs_list)
+    # for job in jobs_list:
+    #     send_notification_email(job)
+    #     break
+    return jsonify({'message': 'Function executed successfully'}), 200
+
+
+def send_notification_email(jobs_list):
+
+    sender = 'burnoutapp123@gmail.com'
+    password = 'xszyjpklynmwqsgh'
+    receiver = "shubhamkulkarni2421@gmail.com"
+
+    subject = 'Job-Cruncher: New Job Notification'
+    body = "Job Listings:\n\n"
+
+    for jobs in jobs_list:
+        body += f"""
+    Job Title: {jobs['Job Title']}
+    Company: {jobs['Company Name']}
+    Location: {jobs['Location']}
+    Job Function: {jobs['Job function']}
+    Employment Type: {jobs['Employment type']}
+    Industries: {jobs['Industries']}
+    Date Posted: {jobs['Date Posted']}
+    Job Description: {jobs['Job Description'][:200]}...
+
+    """
+
+    body += "\nFor more details, please check the job postings on our platform."
+
+    try:
+
+        em = EmailMessage()
+        em['From'] = sender
+        em['To'] = receiver
+        em['Subject'] = subject
+        em.set_content(body)
+
+        context = ssl.create_default_context()
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as smtp:
+            smtp.login(sender, password)
+            smtp.sendmail(sender, receiver, em.as_string())
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        flash(
+            'Failed to send Two-Factor Authentication code. Please try again.',
+            'danger')
